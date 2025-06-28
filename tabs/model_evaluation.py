@@ -17,8 +17,17 @@ def run():
         return
 
     if "dataset" not in st.session_state:
-        st.warning("Preprocessed dataset not found.")
-        return
+        if "preprocessed_df" in st.session_state and "split" in st.session_state.preprocessed_df.columns:
+            df = st.session_state.preprocessed_df
+            from datasets import Dataset, DatasetDict
+            st.session_state.dataset = DatasetDict({
+                "train": Dataset.from_pandas(df[df["split"] == "train"].reset_index(drop=True)),
+                "test": Dataset.from_pandas(df[df["split"] == "test"].reset_index(drop=True)),
+            })
+        else:
+            st.warning("Preprocessed dataset not found.")
+            return
+
 
     model = st.session_state.trained_model
     tokenizer = st.session_state.tokenizer

@@ -12,6 +12,7 @@ from datasets import DatasetDict, Dataset
 import pandas as pd
 import matplotlib.pyplot as plt
 
+
 def run():
     st.header("Model Training")
 
@@ -98,15 +99,33 @@ def run():
         st.markdown("### Final Training Metrics")
         st.json(result.metrics)
 
-        # Logs & Loss Curve
-        st.markdown("### Training Curve")
+        # Logs DataFrame
         logs = pd.DataFrame(trainer.state.log_history)
-        if "loss" in logs.columns:
-            st.line_chart(logs["loss"])
-        if "eval_loss" in logs.columns:
-            st.line_chart(logs["eval_loss"])
+
+        st.markdown("### 📋 Detailed Training Logs Table")
+        st.dataframe(logs[["epoch", "loss", "eval_loss", "grad_norm", "learning_rate"]].dropna(how='all'))
+
+        # Cleaned table: one row per log step (drops columns that are mostly null)
+        cleaned_logs = logs[["epoch", "loss", "eval_loss", "grad_norm", "learning_rate"]].dropna(how='all')
+
+        st.markdown("### 📈 Loss & Learning Rate Curves")
+        fig, ax = plt.subplots(figsize=(8, 4))
+        if 'loss' in cleaned_logs:
+            ax.plot(cleaned_logs["epoch"], cleaned_logs["loss"], label="Train Loss", marker='o')
+        if 'eval_loss' in cleaned_logs:
+            ax.plot(cleaned_logs["epoch"], cleaned_logs["eval_loss"], label="Eval Loss", marker='o')
+        if 'learning_rate' in cleaned_logs:
+            ax2 = ax.twinx()
+            ax2.plot(cleaned_logs["epoch"], cleaned_logs["learning_rate"], label="LR", color="green", linestyle="--", alpha=0.6)
+            ax2.set_ylabel("Learning Rate", color="green")
+        ax.set_xlabel("Epoch")
+        ax.set_ylabel("Loss")
+        ax.set_title("Training & Evaluation Loss with LR")
+        ax.legend(loc="upper left")
+        st.pyplot(fig)
 
         # Save to session
         st.session_state.trained_model = model
         st.session_state.tokenizer = tokenizer
         st.session_state.active_tab = "Evaluation"
+        st.session_state.dataset = tokenized
